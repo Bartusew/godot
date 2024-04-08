@@ -1493,6 +1493,7 @@ ProjectSettings::ProjectSettings() {
 	extensions.push_back("gdshader");
 
 	GLOBAL_DEF(PropertyInfo(Variant::PACKED_STRING_ARRAY, "editor/script/search_in_file_extensions"), extensions);
+	GLOBAL_DEF(PropertyInfo(Variant::STRING, "editor/import/scene_import_enviroment", PROPERTY_HINT_FILE, "*.tres"), "");
 
 	_add_builtin_input_map();
 

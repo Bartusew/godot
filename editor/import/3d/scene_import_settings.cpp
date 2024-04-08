@@ -218,13 +218,23 @@ void SceneImportSettingsDialog::_fill_material(Tree *p_tree, const Ref<Material>
 		md.has_import_id = has_import_id;
 		md.material = p_material;
 
+		if (external_materials.has(import_id)) {
+			Dictionary external_material_dictionary = external_materials[import_id];
+			bool external_material_enabled = external_material_dictionary[String("use_external/enabled")];
+			String external_material_path = external_material_dictionary[String("use_external/path")];
+			if (external_material_enabled && !external_material_path.is_empty()) {
+				Ref<Material> external_material = ResourceLoader::load(external_material_path);
+				md.material = external_material;
+			}
+		}
+
 		_load_default_subresource_settings(md.settings, "materials", import_id, ResourceImporterScene::INTERNAL_IMPORT_CATEGORY_MATERIAL);
 
 		material_map[import_id] = md;
 	}
 
 	MaterialData &material_data = material_map[import_id];
-	ERR_FAIL_COND(p_material != material_data.material);
+	ERR_FAIL_COND(p_material != material_data.material && !external_materials.has(p_material->get_name()));
 
 	Ref<Texture2D> icon = get_editor_theme_icon(SNAME("StandardMaterial3D"));
 
@@ -450,6 +460,19 @@ void SceneImportSettingsDialog::_fill_scene(Node *p_node, TreeItem *p_parent_ite
 	if (mesh_node && mesh_node->get_mesh().is_valid()) {
 		if (!editing_animation) {
 			_fill_mesh(scene_tree, mesh_node->get_mesh(), item);
+
+			for (int i = 0; i < mesh_node->get_mesh()->get_surface_count(); i++) {
+				Ref<Material> mat = mesh_node->get_mesh()->surface_get_material(i);
+				if (external_materials.has(mat->get_name())) {
+					Dictionary external_material_dictionary = external_materials[mat->get_name()];
+					bool external_material_enabled = external_material_dictionary[String("use_external/enabled")];
+					String external_material_path = external_material_dictionary[String("use_external/path")];
+					if (external_material_enabled && !external_material_path.is_empty()) {
+						Ref<Material> external_material = ResourceLoader::load(external_material_path);
+						mesh_node->get_mesh()->surface_set_material(i, external_material);
+					}
+				}
+			}
 		}
 
 		// Add the collider view.
@@ -485,6 +508,15 @@ void SceneImportSettingsDialog::_update_scene() {
 	material_tree->create_item();
 	mesh_tree->create_item();
 
+	if (base_subresource_settings.has(String("materials"))) {
+		external_materials = base_subresource_settings[String("materials")];
+	}
+
+	String viewport_preview_enviroment_path = GLOBAL_GET("editor/import/scene_import_enviroment");
+	Ref<Environment> viewport_preview_enviroment = ResourceLoader::load(viewport_preview_enviroment_path);
+
+	base_viewport->get_world_3d()->set_environment(viewport_preview_enviroment);
+	
 	_fill_scene(scene, nullptr);
 }
 
@@ -1288,6 +1320,24 @@ void SceneImportSettingsDialog::_menu_callback(int p_id) {
 	save_path->popup_centered_ratio();
 }
 
+void SceneImportSettingsDialog::_render_debug_draw_callback(int p_id)
+{
+	switch (p_id) {
+		case RENDER_NORMAL: {
+			base_viewport->set_debug_draw(Viewport::DEBUG_DRAW_DISABLED);
+		} break;
+		case RENDER_WIREFRAME: {
+			base_viewport->set_debug_draw(Viewport::DEBUG_DRAW_WIREFRAME);
+		} break;
+		case RENDER_UNSHADED: {
+			base_viewport->set_debug_draw(Viewport::DEBUG_DRAW_UNSHADED);
+		} break;
+		case NORMAL_BUFFER: {
+			base_viewport->set_debug_draw(Viewport::DEBUG_DRAW_NORMAL_BUFFER);
+		} break;
+	}
+}
+
 void SceneImportSettingsDialog::_save_path_changed(const String &p_path) {
 	save_path_item->set_text(1, p_path);
 
@@ -1561,6 +1611,20 @@ SceneImportSettingsDialog::SceneImportSettingsDialog() {
 
 	action_menu->get_popup()->connect("id_pressed", callable_mp(this, &SceneImportSettingsDialog::_menu_callback));
 
+	MenuButton *render_debug_button = memnew(MenuButton);
+	render_debug_button->set_text(String("Render Mode"));
+	render_debug_button->set_flat(false);
+	render_debug_button->set_focus_mode(Control::FOCUS_ALL);
+	render_debug_button->get_popup()->add_radio_check_item(String("Display Normal"), RENDER_NORMAL);
+	render_debug_button->get_popup()->add_radio_check_item(String("Display Wireframe"), RENDER_WIREFRAME);
+	render_debug_button->get_popup()->add_radio_check_item(String("Display Unshaded"), RENDER_UNSHADED);
+	render_debug_button->get_popup()->add_radio_check_item(String("Normal Buffer"), NORMAL_BUFFER);
+
+	render_debug_button->get_popup()->connect("id_pressed", callable_mp(this, &SceneImportSettingsDialog::_render_debug_draw_callback));
+	render_debug_button->get_popup()->set_focused_item(0);
+
+	menu_hb->add_child(render_debug_button);
+
 	tree_split = memnew(HSplitContainer);
 	main_vb->add_child(tree_split);
 	tree_split->set_v_size_flags(Control::SIZE_EXPAND_FILL);
@@ -1642,7 +1706,10 @@ SceneImportSettingsDialog::SceneImportSettingsDialog() {
 	animation_slider->set_focus_mode(Control::FOCUS_NONE);
 	animation_slider->connect(SNAME("value_changed"), callable_mp(this, &SceneImportSettingsDialog::_animation_slider_value_changed));
 
+	World3D *viewport_preview_world = memnew(World3D);
+
 	base_viewport->set_use_own_world_3d(true);
+	base_viewport->set_world_3d(viewport_preview_world);
 
 	camera = memnew(Camera3D);
 	base_viewport->add_child(camera);

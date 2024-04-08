@@ -63,6 +63,13 @@ class SceneImportSettingsDialog : public ConfirmationDialog {
 		ACTION_CHOOSE_ANIMATION_SAVE_PATHS,
 	};
 
+	enum debug_draw_modes {
+		RENDER_NORMAL,
+		RENDER_WIREFRAME,
+		RENDER_UNSHADED,
+		NORMAL_BUFFER,
+	};
+
 	Node *scene = nullptr;
 
 	HSplitContainer *tree_split = nullptr;
@@ -197,6 +204,7 @@ class SceneImportSettingsDialog : public ConfirmationDialog {
 	EditorFileDialog *item_save_path = nullptr;
 
 	void _menu_callback(int p_id);
+	void _render_debug_draw_callback(int p_id);
 	void _save_dir_callback(const String &p_path);
 
 	int current_action = 0;
@@ -209,6 +217,7 @@ class SceneImportSettingsDialog : public ConfirmationDialog {
 	void _save_dir_confirm();
 
 	Dictionary base_subresource_settings;
+	Dictionary external_materials;
 
 	void _load_default_subresource_settings(HashMap<StringName, Variant> &settings, const String &p_type, const String &p_import_id, ResourceImporterScene::InternalImportCategory p_category);
 

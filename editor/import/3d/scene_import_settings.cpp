@@ -1320,8 +1320,7 @@ void SceneImportSettingsDialog::_menu_callback(int p_id) {
 	save_path->popup_centered_ratio();
 }
 
-void SceneImportSettingsDialog::_render_debug_draw_callback(int p_id)
-{
+void SceneImportSettingsDialog::_render_debug_draw_callback(int p_id) {
 	switch (p_id) {
 		case RENDER_NORMAL: {
 			base_viewport->set_debug_draw(Viewport::DEBUG_DRAW_DISABLED);

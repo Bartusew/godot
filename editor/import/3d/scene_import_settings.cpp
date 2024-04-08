@@ -516,7 +516,7 @@ void SceneImportSettingsDialog::_update_scene() {
 	Ref<Environment> viewport_preview_enviroment = ResourceLoader::load(viewport_preview_enviroment_path);
 
 	base_viewport->get_world_3d()->set_environment(viewport_preview_enviroment);
-	
+
 	_fill_scene(scene, nullptr);
 }
 
